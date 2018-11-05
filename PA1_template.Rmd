@@ -1,0 +1,154 @@
+---
+title: "Reproducible Research Project 1"
+author: "HsuanJu Chen"
+date: "2018/11/05"
+output: html_document
+---
+
+## Loading  package
+```{r message=FALSE}
+library(dplyr)
+library(ggplot2)
+```
+
+## Load the data
+```{r}
+Sys.setlocale("LC_TIME", "English")
+
+Dataframe <- read.csv("activity.csv", 
+                      sep = ",",
+                      header = TRUE,
+                      stringsAsFactors = FALSE)
+```
+
+## Transform the data 
+```{r}
+Dataframe$steps <- as.numeric(Dataframe$steps)
+Dataframe$date <- as.Date(Dataframe$date, "%Y-%m-%d")
+SubDataframe <- na.omit(Dataframe) # Remove missing values 
+```
+
+
+## Q1: mean total number of steps taken per day
+### Calculate the total number of steps taken per day
+```{r}
+(stepsPerDay <- SubDataframe %>%
+    group_by(date) %>%
+    summarize(sum(steps)))
+```
+
+### Make a histogram of the total number of steps taken each day
+```{r}
+hist(stepsPerDay$`sum(steps)`,
+     xlab = "Total Number of Steps Per Day", 
+     ylab = "Frequency",
+     main = "Histogram of total number of steps per day",
+     breaks = 10, 
+     xlim = c(0, 25000), 
+     ylim = c(0, 20),
+     col = "blue")
+```
+
+
+### Calculate and report the mean and median of the total number of steps taken per day
+```{r}
+(mean(stepsPerDay$`sum(steps)`))
+(median(stepsPerDay$`sum(steps)`))
+```
+#### The mean total number of steps taken per day is 10766.19 and the median is 10765
+
+
+## Q2: What is the average daily activity pattern?
+### Make a time series plot 
+```{r}
+(stepsPerInterval <- SubDataframe %>% 
+    group_by(interval) %>%
+    summarize(mean(steps)))
+```
+
+```{r}
+plot(stepsPerInterval$interval,stepsPerInterval$`mean(steps)`,
+     type = "l", 
+     xlab = "Time Interval (5-mins)", 
+     ylab = "Average number of steps",
+     main = "Average Number of Steps by Time  Interval",
+     col = "blue")
+```
+
+### Find the interval with the maximum number of steps
+```{r}
+(maxInterval<- stepsPerInterval$interval[which.max(stepsPerInterval$`mean(steps)`)])
+```
+#### The maximum number of steps was observed during interval 835
+
+
+## Q3: Imputing missing values
+
+### Calculate and report the total number of missing values in the dataset
+```{r}
+(missingValues <-sum (is.na(Dataframe$steps)))
+```
+#### There are 2304 missing values in the dataset
+
+### Create a new dataset without the missing data 
+```{r}
+newDataframe <- Dataframe
+for(i in 1:nrow(newDataframe)){
+    if(is.na(newDataframe$steps[i])){
+        newDataframe$steps[i] <- mean(newDataframe$steps, na.rm = TRUE)
+    }
+}
+```
+
+### Plot the histogram of steps per day for the dataset without the missing values 
+```{r}
+(newstepsPerDay <- newDataframe %>%
+    group_by(date) %>%
+    summarize(sum(steps)))
+```
+
+```{r}
+hist(newstepsPerDay$`sum(steps)`,
+     xlab = "Total Number of Steps Per Day", 
+     ylab = "Frequency",
+     main = "Histogram of total number of steps per day",
+     breaks = 10, 
+     xlim = c(0, 25000), 
+     ylim = c(0, 20),
+     col = "blue")
+```
+
+### Calculate and report the mean and median total number of steps taken per day.
+```{r}
+(mean(newstepsPerDay$`sum(steps)`))
+(median(newstepsPerDay$`sum(steps)`))
+```
+#### The mean total number of steps taken per day is 10766.19 and the median is 10766.19
+
+
+## Q4: Are there differences in activity patterns between weekdays and weekends?
+### Create a variable with weekdays 
+```{r}
+newDataframe$day <- weekdays(newDataframe$date)
+
+# Define days that are Saturday or Sunday as weekends
+newDataframe <- newDataframe %>%
+    mutate(dayClass = ifelse(day %in% c("Saturday", "Sunday"),"weekend",
+                             "weekday")) 
+```
+
+### Make a panel plot containing a time series plot 
+```{r}
+(newstepsPerDay2 <- newDataframe %>%
+    group_by(dayClass, interval) %>%
+    summarize(mean(steps)))
+```
+
+```{r}
+ggplot(newstepsPerDay2, aes(x = interval, y = `mean(steps)`)) + 
+    geom_line(color = "blue") + 
+    xlab("Time Interval (5-mins)") + 
+    ylab("Average number of steps") + 
+    ggtitle("Average Number of Steps by Time Interval") + 
+    facet_grid(dayClass~.)
+```
